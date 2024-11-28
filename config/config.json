@@ -1,20 +1,12 @@
-// example
 {
-    "tables": [
+    "default_schema": "public",
+
+    "custom_queries": [
         {
-            "name": "users",
-            "where_clause": "active = true AND created_at > '2023-01-01'",
-            "batch_size": 50000
-        },
-        {
-            "name": "transactions",
-            "where_clause": "amount > 100 AND date >= '2023-01-01'",
-            "batch_size": 100000
-        },
-        {
-            "name": "large_log_table",
-            "where_clause": null,
-            "batch_size": 250000
+            "query": "SELECT account_code, account_name, balance from ibcore.account where account_type = 'X'",
+            "output_table_name": "account",
+            "output_schema": "ibcore",
+            "batch_size": 1000
         }
     ]
 }

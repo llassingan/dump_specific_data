@@ -1,0 +1,26 @@
+// example
+{
+    "default_schema": "public",
+    "tables": [
+        {
+            "name": "account",
+            "schema": "ibcore",
+            "where_clause": "active = true AND created_at > '2023-01-01'",
+            "batch_size": 50000
+        },
+        {
+            "name": "account",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 30000
+        }
+    ],
+    "custom_queries": [
+        {
+            "query": "SELECT account_code, account_name, balance from ibcore.account where account_type = 'X'",
+            "output_table_name": "account",
+            "output_schema": "ibcore",
+            "batch_size": 1000
+        }
+    ]
+}

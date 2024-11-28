@@ -1,12 +1,10 @@
+
 import os
 import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from tqdm import tqdm
-import subprocess
+from sqlalchemy import create_engine, text
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -25,92 +23,194 @@ class PostgreSQLBackup:
             'port': os.getenv('DB_PORT', '5432'),
             'database': os.getenv('DB_NAME'),
             'user': os.getenv('DB_USER'),
-            'password': os.getenv('DB_PASSWORD')
+            'password': os.getenv('DB_PASSWORD'),
+            'default_schema': self.config.get('default_schema', 'public')
         }
         
         # Backup directory
         self.backup_dir = '/backups'
         os.makedirs(self.backup_dir, exist_ok=True)
 
-    def _get_connection(self):
-        """Create a database connection."""
-        return psycopg2.connect(**self.db_params)
+    def _get_connection_string(self):
+        """Create SQLAlchemy connection string."""
+        return f"postgresql://{self.db_params['user']}:{self.db_params['password']}@{self.db_params['host']}:{self.db_params['port']}/{self.db_params['database']}"
 
-    def get_total_rows(self, table_name: str, where_clause: Optional[str] = None) -> int:
-        """Get total number of rows in a table."""
-        query = f"SELECT COUNT(*) as count FROM {table_name}"
-        if where_clause:
-            query += f" WHERE {where_clause}"
+    def _get_fully_qualified_table_name(self, table_name: str, schema: Optional[str] = None):
+        """Generate fully qualified table name with schema."""
+        if schema:
+            return f"{schema}.{table_name}"
+        return f"{self.db_params['default_schema']}.{table_name}"
+
+    def backup_table(self, 
+                     table_name: str, 
+                     batch_size: int = 10000, 
+                     where_clause: Optional[str] = None,
+                     schema: Optional[str] = None):
+        """Backup a specific table with optional filtering and batching."""
+        qualified_table_name = self._get_fully_qualified_table_name(table_name, schema)
+        engine = create_engine(self._get_connection_string())
         
-        with self._get_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute(query)
-                return cursor.fetchone()['count']
-
-    def backup_table(self, table_name: str, batch_size: int = 100000, 
-                     where_clause: Optional[str] = None):
-        """
-        Backup a specific table with optional filtering and batching.
+        with engine.connect() as connection:
+            query = text("""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = :table_name 
+                  AND table_schema = :schema
+                ORDER BY ordinal_position
+            """)
+            result = connection.execute(query, {
+                'table_name': table_name, 
+                'schema': schema or self.db_params['default_schema']
+            })
+            columns = [row for row in result]
         
-        :param table_name: Name of the table to backup
-        :param batch_size: Number of rows to process in each batch
-        :param where_clause: Optional WHERE clause for selective dumping
-        """
-        # Get total rows for progress tracking
-        total_rows = self.get_total_rows(table_name, where_clause)
-        logger.info(f"Backing up table {table_name}: {total_rows} total rows")
-
-        # Prepare backup filename
+        column_names = [col[0] for col in columns]
+        
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_filename = f"{table_name}_{timestamp}"
+        backup_filename = f"{schema or 'public'}_{table_name}_{timestamp}.sql"
+        full_backup_path = os.path.join(self.backup_dir, backup_filename)
         
-        # Batch processing
-        offset = 0
-        batch_number = 1
+        base_query = f"SELECT * FROM {qualified_table_name}"
+        if where_clause:
+            base_query += f" WHERE {where_clause}"
         
-        while offset < total_rows:
-            # Construct query with optional where clause and pagination
-            query = f"SELECT * FROM {table_name}"
-            if where_clause:
-                query += f" WHERE {where_clause}"
-            query += f" ORDER BY ctid LIMIT {batch_size} OFFSET {offset}"
+        with open(full_backup_path, 'w') as backup_file:
+            backup_file.write(f"-- Backup of {qualified_table_name}\n")
+            backup_file.write(f"SET session_replication_role = 'replica';\n\n")
+            backup_file.write(f"ALTER TABLE {qualified_table_name} DISABLE TRIGGER ALL;\n\n")
+            backup_file.write(f"TRUNCATE TABLE {qualified_table_name};\n\n")
             
-            # Backup batch to CSV
-            batch_backup_file = f"{backup_filename}_batch_{batch_number}.csv"
-            full_backup_path = os.path.join(self.backup_dir, batch_backup_file)
+            offset = 0
+            batch_number = 1
             
-            # Use COPY command for efficient CSV export
-            psql_command = [
-                'psql',
-                f'-h{self.db_params["host"]}',
-                f'-p{self.db_params["port"]}',
-                f'-U{self.db_params["user"]}',
-                f'-d{self.db_params["database"]}',
-                '-c', 
-                f"\\copy ({query}) TO '{full_backup_path}' WITH CSV HEADER"
-            ]
+            while True:
+                paginated_query = f"{base_query} ORDER BY ctid LIMIT {batch_size} OFFSET {offset}"
+                
+                with engine.connect() as connection:
+                    result = connection.execute(text(paginated_query))
+                    rows = result.fetchall()
+                    
+                    if not rows:
+                        break
+                    
+                    for row in rows:
+                        row_dict = dict(zip(column_names, row))
+                        formatted_values = []
+                        for col in column_names:
+                            value = row_dict[col]
+                            
+                            if value is None:
+                                formatted_values.append('NULL')
+                            elif isinstance(value, str):
+                                # Escape single quotes by replacing them with two single quotes
+                                escaped_value = value.replace("'", "''")
+                                formatted_values.append(f"'{escaped_value}'")
+                            elif isinstance(value, (int, float)):
+                                formatted_values.append(str(value))
+                            elif isinstance(value, bool):
+                                # Depending on your SQL dialect, this might need to be 1/0 or TRUE/FALSE
+                                formatted_values.append('TRUE' if value else 'FALSE')
+                            else:
+                                # For other data types like dates, format them as strings
+                                # Adjust the formatting as needed for your specific use case
+                                escaped_value = str(value).replace("'", "''")
+                                formatted_values.append(f"'{escaped_value}'")
+                        insert_stmt = f"INSERT INTO {qualified_table_name} ({', '.join(column_names)}) VALUES ({', '.join(formatted_values)});\n"
+                        backup_file.write(insert_stmt)
+
+                    
             
-            # Set password via environment to avoid command line exposure
-            env = os.environ.copy()
-            env['PGPASSWORD'] = self.db_params['password']
+                
+                offset += batch_size
+                batch_number += 1
+                
+                logger.info(f"Processed batch {batch_number-1} for {qualified_table_name}")
             
-            try:
-                subprocess.run(psql_command, env=env, check=True)
-                logger.info(f"Backed up batch {batch_number} for {table_name}")
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Failed to backup batch {batch_number}: {e}")
-                break
+            backup_file.write(f"\nALTER TABLE {qualified_table_name} ENABLE TRIGGER ALL;\n")
+            backup_file.write(f"\nSET session_replication_role = 'origin';\n")
+        
+        logger.info(f"Completed backup for {qualified_table_name}: {full_backup_path}")
+
+    def backup_custom_query(self, 
+                             query: str, 
+                             output_table_name: str, 
+                             batch_size: int = 10000, 
+                             params: Optional[Dict] = None,
+                             output_schema: Optional[str] = None):
+        """Backup results of a custom query with batched processing."""
+        qualified_output_table = self._get_fully_qualified_table_name(output_table_name, output_schema)
+        engine = create_engine(self._get_connection_string())
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"{output_schema or 'public'}_{output_table_name}_{timestamp}_custom_query.sql"
+        full_backup_path = os.path.join(self.backup_dir, backup_filename)
+        
+        with engine.connect() as connection:
+            query_with_limit = text(f"{query} LIMIT 1")
+            result = connection.execute(query_with_limit, params or {})
+            column_names = list(result.keys())
+        
+        with open(full_backup_path, 'w') as backup_file:
+            backup_file.write(f"-- Custom Query Backup for {qualified_output_table}\n")
+            backup_file.write(f"-- Original Query: {query}\n\n")
             
-            # Update for next iteration
-            offset += batch_size
-            batch_number += 1
+            offset = 0
+            batch_number = 1
+            
+            while True:
+                paginated_query = text(f"{query} LIMIT :batch_size OFFSET :offset")
+                query_params = (params or {}).copy()
+                query_params.update({
+                    'batch_size': batch_size,
+                    'offset': offset
+                })
+                
+                with engine.connect() as connection:
+                    result = connection.execute(paginated_query, query_params)
+                    rows = result.fetchall()
+                    
+                    if not rows:
+                        break
+                    
+                    for row in rows:
+                        row_dict = dict(zip(column_names, row))
+                        formatted_values = []
+                        for col in column_names:
+                            value = row_dict[col]
+                            
+                            if value is None:
+                                formatted_values.append('NULL')
+                            elif isinstance(value, str):
+                                # Escape single quotes by replacing them with two single quotes
+                                escaped_value = value.replace("'", "''")
+                                formatted_values.append(f"'{escaped_value}'")
+                            elif isinstance(value, (int, float)):
+                                formatted_values.append(str(value))
+                            elif isinstance(value, bool):
+                                # Depending on your SQL dialect, this might need to be 1/0 or TRUE/FALSE
+                                formatted_values.append('TRUE' if value else 'FALSE')
+                            else:
+                                # For other data types like dates, format them as strings
+                                # Adjust the formatting as needed for your specific use case
+                                escaped_value = str(value).replace("'", "''")
+                                formatted_values.append(f"'{escaped_value}'")
+                        insert_stmt = f"INSERT INTO {qualified_output_table} ({', '.join(column_names)}) VALUES ({', '.join(formatted_values)});\n"
+                        backup_file.write(insert_stmt)
+                
+                offset += batch_size
+                batch_number += 1
+                
+                logger.info(f"Processed batch {batch_number-1} for custom query")
+            
+        logger.info(f"Completed custom query backup: {full_backup_path}")
 
     def backup_database(self):
-        """Backup tables based on configuration."""
+        """Backup tables and custom queries based on configuration."""
         for table_config in self.config.get('tables', []):
             table_name = table_config.get('name')
+            schema = table_config.get('schema')
             where_clause = table_config.get('where_clause')
-            batch_size = table_config.get('batch_size', 100000)
+            batch_size = table_config.get('batch_size', 10000)
             
             if not table_name:
                 logger.warning("Skipping table with no name")
@@ -120,10 +220,33 @@ class PostgreSQLBackup:
                 self.backup_table(
                     table_name, 
                     batch_size=batch_size, 
-                    where_clause=where_clause
+                    where_clause=where_clause,
+                    schema=schema
                 )
             except Exception as e:
-                logger.error(f"Error backing up table {table_name}: {e}")
+                logger.error(f"Error backing up table {schema}.{table_name}: {e}")
+        
+        for query_config in self.config.get('custom_queries', []):
+            query = query_config.get('query')
+            output_table_name = query_config.get('output_table_name', 'custom_query_result')
+            output_schema = query_config.get('output_schema')
+            batch_size = query_config.get('batch_size', 10000)
+            params = query_config.get('params')
+            
+            if not query:
+                logger.warning("Skipping custom query with no query defined")
+                continue
+            
+            try:
+                self.backup_custom_query(
+                    query=query,
+                    output_table_name=output_table_name,
+                    output_schema=output_schema,
+                    batch_size=batch_size,
+                    params=params
+                )
+            except Exception as e:
+                logger.error(f"Error backing up custom query: {e}")
 
 def main():
     backup = PostgreSQLBackup()
