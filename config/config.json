@@ -1,0 +1,19 @@
+{
+    "tables": [
+        {
+            "name": "users",
+            "where_clause": "active = true AND created_at > '2023-01-01'",
+            "batch_size": 50000
+        },
+        {
+            "name": "transactions",
+            "where_clause": "amount > 100 AND date >= '2023-01-01'",
+            "batch_size": 100000
+        },
+        {
+            "name": "large_log_table",
+            "where_clause": null,
+            "batch_size": 250000
+        }
+    ]
+}
