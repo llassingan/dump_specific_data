@@ -15,4 +15,4 @@ COPY config /config
 
 WORKDIR /app
 
-ENTRYPOINT ["python", "backup_database.py"]
+ENTRYPOINT ["python", "main.py"]
