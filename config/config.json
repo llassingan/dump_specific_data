@@ -1,12 +1,21 @@
 {
     "default_schema": "public",
-
+    "tables": [
+        {
+            "name": "account",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 1000,
+            "max_batches": null
+        }
+    ],
     "custom_queries": [
         {
             "query": "SELECT account_code, account_name, balance from ibcore.account where account_type = 'X'",
             "output_table_name": "account",
             "output_schema": "ibcore",
-            "batch_size": 1000
+            "batch_size": 100,
+            "max_batches": 3 
         }
     ]
 }

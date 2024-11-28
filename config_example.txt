@@ -6,7 +6,8 @@
             "name": "account",
             "schema": "ibcore",
             "where_clause": "active = true AND created_at > '2023-01-01'",
-            "batch_size": 50000
+            "batch_size": 50000,
+            "max_batches": 5 
         },
         {
             "name": "account",
@@ -20,7 +21,8 @@
             "query": "SELECT account_code, account_name, balance from ibcore.account where account_type = 'X'",
             "output_table_name": "account",
             "output_schema": "ibcore",
-            "batch_size": 1000
+            "batch_size": 1000,
+            "max_batches": 5 
         }
     ]
 }

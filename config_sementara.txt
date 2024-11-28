@@ -1,0 +1,420 @@
+{
+            "name": "accountgroup",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "accounthierarchy",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "accountingday",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "accountingperiode",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "accountingyear",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "accountinputpermit",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "accountinstance",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "confidentialaccess",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "confidentialgroup",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "coreproduct",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "currency",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "denominasivaluta",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "detiltransgroupclass",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "enum_int",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "enum_varchar",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "eventproduk",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "fundingagent",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "glinterface",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "glinterface_tpl",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "grupparameterbiaya",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "jenisevent",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "jenisrekeningtransaksi",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringbank",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringbankwilayah",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringjenisbank",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringjenispeserta",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringjenisusaha",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringkantorbank",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringkantorbi",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringkota",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringpropinsi",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringwilayah",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kliringwilayahkota",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kodepos",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kodeprioritas_rtgs",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kodetranspassbook",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kodetranstrcash",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kodetranstrexclude",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kodetx_rtgs",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "kodetx_skn",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "layanan",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "memberrtgs",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "memberrtgsaccount",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterbiaya",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterctr",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterevent",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterglobal",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterglobaltreasury",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterinbox",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterjournal",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "parameterjournalitem",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "paramkoderekening",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "perusahaanasuransi",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "pofaccgroup",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "pofaccgroupitem",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "pofaccgroupproduct",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "pofasset",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "pofbonuswadiah",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "poffunding",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "pooloffund",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "produk",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "produkassettetap",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "produkbdd",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "produkcabang",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "produkdeposito",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "produkrencana",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "report",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "reportaccess",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "reportgroupaccess",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        },
+        {
+            "name": "tagreport",
+            "schema": "ibcore",
+            "where_clause": null,
+            "batch_size": 10000
+        }
