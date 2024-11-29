@@ -4,14 +4,14 @@
     "tables": [
         {
             "name": "account",
-            "schema": "ibcore",
+            "schema": "test",
             "where_clause": "active = true AND created_at > '2023-01-01'",
             "batch_size": 50000,
             "max_batches": 5 
         },
         {
             "name": "account",
-            "schema": "ibcore",
+            "schema": "test",
             "where_clause": null,
             "batch_size": 30000
         }
@@ -20,8 +20,15 @@
         {
             "query": "SELECT account_code, account_name, balance from ibcore.account where account_type = 'X'",
             "output_table_name": "account",
-            "output_schema": "ibcore",
+            "output_schema": "test",
             "batch_size": 1000,
+            "max_batches": 5 
+        },
+        {
+            "query": "SELECT accountinstance_id, balance from test.accountinstance where accountinstance is not null",
+            "output_table_name": "accountinstance",
+            "output_schema": "test",
+            "batch_size": 100,
             "max_batches": 5 
         }
     ]

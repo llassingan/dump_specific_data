@@ -2,3 +2,5 @@
 \backups
 \logs
 \log
+\result
+\exclude

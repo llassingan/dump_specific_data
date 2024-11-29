@@ -5,6 +5,8 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy import create_engine, text
+from sqlalchemy.dialects import postgresql
+from decimal import Decimal
 
 # Configure logging
 
@@ -14,8 +16,11 @@ os.makedirs(log_dir, exist_ok=True)  # Create the directory if it doesn't exist
 
 # Create a timestamp for the log file name
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-log_file_name = os.path.join(log_dir, f'sql_dump_{timestamp}.log')  # Combine path and file name
+config_path='/config/config.json'
+with open(config_path, 'r') as config_file:
+    config = json.load(config_file)
+log_project = config.get('project')
+log_file_name = os.path.join(log_dir, f'{log_project}_{timestamp}.log')  # Combine path and file name
 
 
 # Create a logger
@@ -70,7 +75,36 @@ class PostgreSQLBackup:
         if schema:
             return f"{schema}.{table_name}"
         return f"{self.db_params['default_schema']}.{table_name}"
-
+    def _format_value(self, value, data_type=None):
+        """Helper method to properly format values based on their data type."""
+        if value is None:
+            return 'NULL'
+        
+        # Handle numeric/decimal types
+        if isinstance(value, Decimal) or (data_type and 'numeric' in data_type.lower()):
+            # Convert scientific notation to plain string representation
+            if isinstance(value, Decimal):
+                return str(value.normalize())
+            # If it's a string in scientific notation, convert to Decimal first
+            try:
+                return str(Decimal(str(value)).normalize())
+            except:
+                return str(value)
+        
+        if isinstance(value, str):
+            # Escape single quotes
+            escaped_value = value.replace("'", "''")
+            return f"'{escaped_value}'"
+        
+        if isinstance(value, (int, float)):
+            return str(value)
+        
+        if isinstance(value, bool):
+            return 'TRUE' if value else 'FALSE'
+        
+        # For other types, format as escaped string
+        escaped_value = str(value).replace("'", "''")
+        return f"'{escaped_value}'"
     def backup_table(self, 
                      table_name: str, 
                      batch_size: int = 10000, 
@@ -97,6 +131,8 @@ class PostgreSQLBackup:
             columns = [row for row in result]
         
         column_names = [col[0] for col in columns]
+        column_types = {col[0]: col[1] for col in columns}  # Map column names to their data types
+   
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filename = f"{schema or 'public'}_{table_name}_{timestamp}.sql"
@@ -133,27 +169,11 @@ class PostgreSQLBackup:
                         formatted_values = []
                         for col in column_names:
                             value = row_dict[col]
-                            
-                            if value is None:
-                                formatted_values.append('NULL')
-                            elif isinstance(value, str):
-                                # Escape single quotes by replacing them with two single quotes
-                                escaped_value = value.replace("'", "''")
-                                formatted_values.append(f"'{escaped_value}'")
-                            elif isinstance(value, (int, float)):
-                                formatted_values.append(str(value))
-                            elif isinstance(value, bool):
-                                # Depending on your SQL dialect, this might need to be 1/0 or TRUE/FALSE
-                                formatted_values.append('TRUE' if value else 'FALSE')
-                            else:
-                                # For other data types like dates, format them as strings
-                                # Adjust the formatting as needed for your specific use case
-                                escaped_value = str(value).replace("'", "''")
-                                formatted_values.append(f"'{escaped_value}'")
+                            data_type = column_types[col]
+                            formatted_values.append(self._format_value(value, data_type))
+                        
                         insert_stmt = f"INSERT INTO {qualified_table_name} ({', '.join(column_names)}) VALUES ({', '.join(formatted_values)});\n"
-                        backup_file.write(insert_stmt)
-
-                    
+                        backup_file.write(insert_stmt)                    
             
                 
                 offset += batch_size
@@ -188,6 +208,8 @@ class PostgreSQLBackup:
             query_with_limit = text(f"{query} LIMIT 1")
             result = connection.execute(query_with_limit, params or {})
             column_names = list(result.keys())
+            column_types = {col: str(result.cursor.description[idx][1]) 
+                       for idx, col in enumerate(column_names)}
         
         with open(full_backup_path, 'w') as backup_file:
             backup_file.write(f"-- Custom Query Backup for {qualified_output_table}\n")
@@ -219,23 +241,9 @@ class PostgreSQLBackup:
                         formatted_values = []
                         for col in column_names:
                             value = row_dict[col]
-                            
-                            if value is None:
-                                formatted_values.append('NULL')
-                            elif isinstance(value, str):
-                                # Escape single quotes by replacing them with two single quotes
-                                escaped_value = value.replace("'", "''")
-                                formatted_values.append(f"'{escaped_value}'")
-                            elif isinstance(value, (int, float)):
-                                formatted_values.append(str(value))
-                            elif isinstance(value, bool):
-                                # Depending on your SQL dialect, this might need to be 1/0 or TRUE/FALSE
-                                formatted_values.append('TRUE' if value else 'FALSE')
-                            else:
-                                # For other data types like dates, format them as strings
-                                # Adjust the formatting as needed for your specific use case
-                                escaped_value = str(value).replace("'", "''")
-                                formatted_values.append(f"'{escaped_value}'")
+                            data_type = column_types[col]
+                            formatted_values.append(self._format_value(value, data_type))
+                        
                         insert_stmt = f"INSERT INTO {qualified_output_table} ({', '.join(column_names)}) VALUES ({', '.join(formatted_values)});\n"
                         backup_file.write(insert_stmt)
                 
