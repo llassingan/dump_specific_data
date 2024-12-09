@@ -2,6 +2,7 @@
 import os
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy import create_engine, text
@@ -82,12 +83,23 @@ class PostgreSQLBackup:
         
         # Handle numeric/decimal types
         if isinstance(value, Decimal) or (data_type and 'numeric' in data_type.lower()):
-            # Convert scientific notation to plain string representation
-            if isinstance(value, Decimal):
-                return str(value.normalize())
-            # If it's a string in scientific notation, convert to Decimal first
             try:
-                return str(Decimal(str(value)).normalize())
+                # Convert to Decimal first if it's not already
+                decimal_value = Decimal(str(value)) if not isinstance(value, Decimal) else value
+                
+                # If it's a numeric type with specific precision/scale
+                if data_type and 'numeric' in data_type.lower():
+                    # Parse precision and scale from data_type string
+                    # Example: "numeric(5,2)" -> precision=5, scale=2
+                    match = re.match(r'numeric\((\d+),(\d+)\)', data_type.lower())
+                    if match:
+                        precision, scale = map(int, match.groups())
+                        # Format with specific precision
+                        format_str = f'{{:.{scale}f}}'
+                        return format_str.format(float(decimal_value))
+                
+                # For other numeric types, just normalize
+                return str(decimal_value.normalize())
             except:
                 return str(value)
         
@@ -105,6 +117,7 @@ class PostgreSQLBackup:
         # For other types, format as escaped string
         escaped_value = str(value).replace("'", "''")
         return f"'{escaped_value}'"
+
     def backup_table(self, 
                      table_name: str, 
                      batch_size: int = 10000, 
@@ -115,7 +128,7 @@ class PostgreSQLBackup:
         qualified_table_name = self._get_fully_qualified_table_name(table_name, schema)
         engine = create_engine(self._get_connection_string())
         logger.info("====================================================================================")
-        logger.info(f"Starting backup table: {table_name} from schema: {schema}")
+        logger.info(f"Starting backup table: {table_name} from schema: {schema} with bulk insert (10 data/insert)")
         with engine.connect() as connection:
             query = text("""
                 SELECT column_name, data_type 
@@ -151,7 +164,9 @@ class PostgreSQLBackup:
             offset = 0
             batch_number = 1
             recordsnum = 0
+            # Process the data 
             while True:
+                # Stop condition if max_batches satisfied 
                 if max_batches and batch_number > max_batches:
                     logger.info(f"Reached maximum number of batches ({max_batches}) for {qualified_table_name}")
                     break
@@ -161,21 +176,47 @@ class PostgreSQLBackup:
                     result = connection.execute(text(paginated_query))
                     rows = result.fetchall()
                     
+                    # if no data/end of the data 
                     if not rows:
                         break
                     
-                    for row in rows:
-                        row_dict = dict(zip(column_names, row))
-                        formatted_values = []
-                        for col in column_names:
-                            value = row_dict[col]
-                            data_type = column_types[col]
-                            formatted_values.append(self._format_value(value, data_type))
+                    # offset for bulk insert operation 
+                    loweroffset = 0
+                    upperinsert = 10 #number of data per bulk insert
+                    
+                    # Process the bulk insert 
+                    while True:
+                        value_stmt_bulk = []
                         
-                        insert_stmt = f"INSERT INTO {qualified_table_name} ({', '.join(column_names)}) VALUES ({', '.join(formatted_values)});\n"
+                        # if no data/end of the data in bulk insert 
+                        current_batch = rows[loweroffset:upperinsert]
+                        if not current_batch:
+                            break
+                        
+                        # Process the data extraction per bulk insert
+                        for row in current_batch:
+                            row_dict = dict(zip(column_names, row))
+                            formatted_values = []
+                            # processing the column 
+                            for col in column_names:
+                                value = row_dict[col]
+                                data_type = column_types[col]
+                                formatted_values.append(self._format_value(value, data_type))
+                            # wrap the values 
+                            value_stmt = f"({', '.join(formatted_values)})"
+                            value_stmt_bulk.append(value_stmt)
+                        
+                        # wrap the bulk insert 
+                        insert_stmt = f"INSERT INTO {qualified_table_name} ({', '.join(column_names)}) VALUES {', '.join(value_stmt_bulk)};\n"
                         backup_file.write(insert_stmt)                    
-            
-                
+                        
+                        loweroffset += upperinsert - loweroffset  
+                        upperinsert += 10
+                        if upperinsert > len(rows):
+                            upperinsert = len(rows)
+                        
+
+
                 offset += batch_size
                 batch_number += 1
                 recordsnum += len(rows)
@@ -236,16 +277,41 @@ class PostgreSQLBackup:
                     if not rows:
                         break
                     
-                    for row in rows:
-                        row_dict = dict(zip(column_names, row))
-                        formatted_values = []
-                        for col in column_names:
-                            value = row_dict[col]
-                            data_type = column_types[col]
-                            formatted_values.append(self._format_value(value, data_type))
+                    # offset for bulk insert operation 
+                    loweroffset = 0
+                    upperinsert = 10 #number of data per bulk insert
+                    
+                    # Process the bulk insert 
+                    while True:
+                        value_stmt_bulk = []
                         
-                        insert_stmt = f"INSERT INTO {qualified_output_table} ({', '.join(column_names)}) VALUES ({', '.join(formatted_values)});\n"
-                        backup_file.write(insert_stmt)
+                        # if no data/end of the data in bulk insert 
+                        current_batch = rows[loweroffset:upperinsert]
+                        if not current_batch:
+                            break
+                        
+                        # Process the data extraction per bulk insert
+                        for row in current_batch:
+                            row_dict = dict(zip(column_names, row))
+                            formatted_values = []
+                            # processing the column 
+                            for col in column_names:
+                                value = row_dict[col]
+                                data_type = column_types[col]
+                                formatted_values.append(self._format_value(value, data_type))
+                            # wrap the values 
+                            value_stmt = f"({', '.join(formatted_values)})"
+                            value_stmt_bulk.append(value_stmt)
+                        
+                        # wrap the bulk insert 
+                        insert_stmt = f"INSERT INTO {qualified_output_table} ({', '.join(column_names)}) VALUES {', '.join(value_stmt_bulk)};\n"
+                        backup_file.write(insert_stmt)                    
+                        
+                        loweroffset += upperinsert - loweroffset  
+                        upperinsert += 10
+                        if upperinsert > len(rows):
+                            upperinsert = len(rows)
+                        
                 
                 offset += batch_size
                 batch_number += 1
